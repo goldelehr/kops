@@ -608,6 +608,30 @@ func findInstanceLaunchConfiguration(i *autoscaling.Instance) string {
 		return name
 	}
 
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+        SharedConfigState: session.SharedConfigEnable,
+    }))
+
+	ec2Svc := ec2.New(sess)
+
+	params := &ec2.DescribeInstancesInput{		
+		InstanceIds: []*string{
+			i.InstanceId,			
+		},
+	}
+    result, err := ec2Svc.DescribeInstances(params)
+    if err != nil {
+        fmt.Println("Error", err)
+    } else {				
+		tags := result.Reservations[0].Instances[0].Tags
+		for _, v := range tags {			
+			if aws.StringValue(v.Key) == "LaunchConfigurationName" {
+				name := aws.StringValue(v.Value)				
+				return name
+			}
+		}
+    }
+
 	// else we need to check the launch template
 	if i.LaunchTemplate != nil {
 		name = aws.StringValue(i.LaunchTemplate.LaunchTemplateName)
